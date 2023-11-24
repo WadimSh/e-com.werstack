@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Chat</title>
+</head>
+<body>
+  <h2>Chat Room</h2>
+  <label for="username">Enter your username:</label>
+  <input id="username" autocomplete="off" />
+  <button id="setUsernameBtn">Set Username</button>
+  <ul id="messages"></ul>
+  <form id="form" action="">
+    <input id="m" autocomplete="off" />
+    <button>Send</button>
+  </form>
+  <h2>Online Users</h2>
+  <select id="userSelect"></select>
+  <input id="privateMessage" autocomplete="off" />
+  <button id="privateMessageBtn">Send Private Message</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const socket = io();
+      let selectedUser = '';
+
+      function setUsername() {
+        const username = document.getElementById('username').value;
+        socket.emit('set username', username);
+        document.getElementById('username').value = '';
+      }
+
+      function sendPrivateMessage() {
+        const message = document.getElementById('privateMessage').value;
+        socket.emit('private chat', selectedUser, message);
+        document.getElementById('privateMessage').value = '';
+      }
+
+      document.getElementById('userSelect').addEventListener('change', function () {
+        selectedUser = this.value;
+      });
+
+      document.getElementById('setUsernameBtn').addEventListener('click', setUsername);
+      document.getElementById('privateMessageBtn').addEventListener('click', sendPrivateMessage);
+
+      document.querySelector('form').addEventListener('submit', function (event) {
+        event.preventDefault();
+        socket.emit('chat message', document.getElementById('m').value);
+        document.getElementById('m').value = '';
+      });
+
+      socket.on('chat message', function (data) {
+        const messages = document.getElementById('messages');
+        const listItem = document.createElement('li');
+        console.log(data.user, data.message)
+        listItem.textContent = `${data.user}: ${data.message}`;
+        messages.appendChild(listItem);
+      });
+
+      socket.on('private message', function (data) {
+      const messages = document.getElementById('messages');
+      const listItem = document.createElement('li');
+      listItem.textContent = `[Private] ${data.user}: ${data.message}`;
+      messages.appendChild(listItem);
+    });
+
+      socket.on('user connected', function (username) {
+        const userSelect = document.getElementById('userSelect');
+        const option = document.createElement('option');
+        option.textContent = username;
+        option.value = username;
+        userSelect.appendChild(option);
+      });
+
+      socket.on('user disconnected', function (username) {
+        const userSelect = document.getElementById('userSelect');
+        const options = userSelect.getElementsByTagName('option');
+        for (let i = 0; i < options.length; i++) {
+          if (options[i].value === username) {
+            userSelect.removeChild(options[i]);
+            break;
+          }
+        }
+      });
+
+      socket.on('get users', function (userList) {
+        const userSelect = document.getElementById('userSelect');
+        userSelect.innerHTML = '';
+        userList.forEach(username => {
+          const option = document.createElement('option');
+          option.textContent = username;
+          option.value = username;
+          userSelect.appendChild(option);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
